@@ -16,22 +16,20 @@ docker compose up --build
 ```
 | URL | What |
 |---|---|
-| http://localhost:8080 | Web UI |
-| http://localhost:3000/api/licenses | API |
-| http://localhost:3000/metrics | Prometheus metrics |
-| http://localhost:9090 | Prometheus |
-| http://localhost:3001 | Grafana (admin/admin), SLO folder |
+| http://127.0.0.1:8080 | Web UI |
+| http://127.0.0.1:3000/api/licenses | API |
+| http://127.0.0.1:3000/metrics | Prometheus metrics |
+| http://127.0.0.1:9090 | Prometheus |
+| http://127.0.0.1:3001 | Grafana (admin/admin), SLO folder |
 
 Tests: `cd backend; npm test`
 
 ## 3. Kubernetes locally (no AWS cost)
 ```powershell
-minikube start --cni=calico
-minikube image build -t license-manager-api:latest backend
-minikube image build -t license-manager-web:latest frontend
-kubectl create secret generic license-db --from-literal=DATABASE_URL=postgres://...
-helm install license-manager k8s/helm/license-manager
+.\scripts\local-k8s.ps1          # minikube + Calico, builds images, helm install, opens the app
+.\scripts\local-k8s.ps1 -Down    # remove
 ```
+Practice drills: `kubectl delete pod -l app=api` (self-healing), `helm rollback license-manager 1`, `kubectl get events --sort-by=.lastTimestamp`.
 
 ## 4. Deploy to AWS
 ```powershell

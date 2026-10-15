@@ -30,8 +30,16 @@ jobs:
       - run: terraform fmt -check -recursive ../..
       - run: terraform init -backend=false && terraform validate
 
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: helm lint k8s/helm/license-manager
+      - run: helm lint k8s/helm/license-manager -f k8s/helm/license-manager/values-local.yaml
+      - run: helm template lm k8s/helm/license-manager -f k8s/helm/license-manager/values-local.yaml > rendered.yaml && grep -c "^kind:" rendered.yaml
+
   build-scan:
-    needs: [test, terraform]
+    needs: [test, terraform, helm]
     runs-on: ubuntu-latest
     strategy: { matrix: { svc: [api, web] } }
     steps:

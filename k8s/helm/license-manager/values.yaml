@@ -1,8 +1,15 @@
 image:
   api: { repository: license-manager-api, tag: latest }
   web: { repository: license-manager-web, tag: latest }
+  pullPolicy: IfNotPresent      # use images already loaded into the node (minikube); ECR tags are immutable SHAs
 replicas: 2
-databaseSecret: license-db   # Secret with key DATABASE_URL (synced from AWS Secrets Manager)
+databaseSecret: license-db      # Secret with key DATABASE_URL (EKS: synced from AWS Secrets Manager)
 resources:
   api: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 256Mi } }
 hpa: { min: 2, max: 6, cpu: 70 }
+web:
+  serviceType: LoadBalancer     # minikube: NodePort
+# In-cluster Postgres for local Kubernetes only. On EKS leave false and point the secret at RDS.
+postgres:
+  enabled: false
+  password: postgres

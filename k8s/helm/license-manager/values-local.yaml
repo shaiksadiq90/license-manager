@@ -1,0 +1,9 @@
+# helm install license-manager k8s/helm/license-manager -f k8s/helm/license-manager/values-local.yaml
+image:
+  api: { tag: local }
+  web: { tag: local }
+replicas: 2
+web:
+  serviceType: NodePort
+postgres:
+  enabled: true
