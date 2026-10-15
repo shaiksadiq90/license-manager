@@ -39,5 +39,5 @@ module "ecr" {
 }
 
 output "cluster_name" { value = module.eks.cluster_name }
-output "db_endpoint"  { value = module.rds.endpoint }
-output "ecr"          { value = module.ecr.urls }
+output "db_endpoint" { value = module.rds.endpoint }
+output "ecr" { value = module.ecr.urls }
