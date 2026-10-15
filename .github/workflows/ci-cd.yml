@@ -1,0 +1,70 @@
+name: ci-cd
+on:
+  pull_request:
+  push: { branches: [main] }
+permissions: { id-token: write, contents: read }   # OIDC to AWS, no long-lived keys
+env: { AWS_REGION: us-east-1, CLUSTER: license-manager-dev }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: infra/terraform/envs/dev } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive ../..
+      - run: terraform init -backend=false && terraform validate
+
+  build-scan-push:
+    needs: [test, terraform]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy: { matrix: { svc: [api, web] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ secrets.AWS_DEPLOY_ROLE_ARN }}", aws-region: "${{ env.AWS_REGION }}" }
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build
+        run: |
+          DIR=$([ "${{ matrix.svc }}" = api ] && echo backend || echo frontend)
+          docker build -t ${{ steps.ecr.outputs.registry }}/license-manager-${{ matrix.svc }}:${{ github.sha }} $DIR
+      - name: Trivy scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ steps.ecr.outputs.registry }}/license-manager-${{ matrix.svc }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - run: docker push ${{ steps.ecr.outputs.registry }}/license-manager-${{ matrix.svc }}:${{ github.sha }}
+
+  deploy:
+    needs: build-scan-push
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ secrets.AWS_DEPLOY_ROLE_ARN }}", aws-region: "${{ env.AWS_REGION }}" }
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - run: aws eks update-kubeconfig --name $CLUSTER --region $AWS_REGION
+      - name: Helm deploy (auto-rollback on failure)
+        run: |
+          helm upgrade --install license-manager k8s/helm/license-manager \
+            --set image.api.repository=${{ steps.ecr.outputs.registry }}/license-manager-api \
+            --set image.web.repository=${{ steps.ecr.outputs.registry }}/license-manager-web \
+            --set image.api.tag=${{ github.sha }} --set image.web.tag=${{ github.sha }} \
+            --atomic --wait --timeout 5m

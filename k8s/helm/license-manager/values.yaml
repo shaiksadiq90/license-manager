@@ -1,0 +1,8 @@
+image:
+  api: { repository: license-manager-api, tag: latest }
+  web: { repository: license-manager-web, tag: latest }
+replicas: 2
+databaseSecret: license-db   # Secret with key DATABASE_URL (synced from AWS Secrets Manager)
+resources:
+  api: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 256Mi } }
+hpa: { min: 2, max: 6, cpu: 70 }

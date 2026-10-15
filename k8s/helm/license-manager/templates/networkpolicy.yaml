@@ -1,0 +1,19 @@
+# Default deny, then allow only web -> api on 3000
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: api-from-web }
+spec:
+  podSelector: { matchLabels: { app: api } }
+  ingress: [{ from: [{ podSelector: { matchLabels: { app: web } } }], ports: [{ port: 3000 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: web-public }
+spec:
+  podSelector: { matchLabels: { app: web } }
+  ingress: [{ ports: [{ port: 8080 }] }]

@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: licenses }
+    ports: ["5432:5432"]
+    volumes: ["./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql", "pgdata:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres"], interval: 5s, retries: 10 }
+  api:
+    build: ./backend
+    environment: { DATABASE_URL: postgres://postgres:postgres@db:5432/licenses }
+    ports: ["3000:3000"]
+    depends_on: { db: { condition: service_healthy } }
+  web:
+    build: ./frontend
+    ports: ["8080:8080"]
+    depends_on: [api]
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes: ["./monitoring/prometheus:/etc/prometheus"]
+    ports: ["9090:9090"]
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment: { GF_SECURITY_ADMIN_PASSWORD: admin }
+    volumes: ["./monitoring/grafana/provisioning:/etc/grafana/provisioning", "./monitoring/grafana/dashboards:/var/lib/grafana/dashboards"]
+    ports: ["3001:3000"]
+volumes: { pgdata: {} }

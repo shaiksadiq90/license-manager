@@ -1,0 +1,18 @@
+groups:
+  - name: slo
+    rules:
+      - record: slo:availability:ratio_rate5m
+        expr: sum(rate(http_request_duration_seconds_count{status!~"5.."}[5m])) / sum(rate(http_request_duration_seconds_count[5m]))
+      - record: slo:latency_p95:5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+      # Multi-window burn-rate alert for a 99.9% availability objective (error budget 0.1%)
+      - alert: ErrorBudgetFastBurn
+        expr: (1 - slo:availability:ratio_rate5m) > (14.4 * 0.001)
+        for: 2m
+        labels: { severity: page }
+        annotations: { summary: "Burning 30-day error budget ~14x too fast" }
+      - alert: LatencyP95High
+        expr: slo:latency_p95:5m > 0.5
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: "p95 latency above 500ms objective" }

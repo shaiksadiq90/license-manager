@@ -1,0 +1,12 @@
+{
+  "title": "License API - SLO",
+  "schemaVersion": 39,
+  "panels": [
+    { "type": "stat", "title": "Availability (5m)", "gridPos": {"x":0,"y":0,"w":8,"h":6},
+      "targets": [{ "expr": "slo:availability:ratio_rate5m * 100" }], "fieldConfig": {"defaults": {"unit": "percent", "decimals": 3}} },
+    { "type": "stat", "title": "p95 latency (5m)", "gridPos": {"x":8,"y":0,"w":8,"h":6},
+      "targets": [{ "expr": "slo:latency_p95:5m" }], "fieldConfig": {"defaults": {"unit": "s"}} },
+    { "type": "timeseries", "title": "Requests per second by status", "gridPos": {"x":0,"y":6,"w":16,"h":8},
+      "targets": [{ "expr": "sum by (status) (rate(http_request_duration_seconds_count[1m]))" }] }
+  ]
+}
