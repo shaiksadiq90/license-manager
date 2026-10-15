@@ -47,6 +47,12 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
+      - name: Report Trivy findings as annotations
+        if: failure()
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image -q \
+            --severity HIGH,CRITICAL --ignore-unfixed --format json license-manager-${{ matrix.svc }}:${{ github.sha }} > trivy.json || true
+          jq -r '.Results[]? | .Target as $t | .Vulnerabilities[]? | "::error title=\(.VulnerabilityID) \(.Severity)::\($t) \(.PkgName) \(.InstalledVersion) -> \(.FixedVersion)"' trivy.json | sort -u | head -50
       - name: Push to ECR
         if: env.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v4
