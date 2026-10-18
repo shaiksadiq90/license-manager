@@ -274,7 +274,7 @@ Mark "pipeline-shown"
 Hold 24
 
 # ================= 3. the SLO dashboard =================
-$graf = Open-Window "grafana" "$Graf/d/license-slo/?orgId=1&refresh=5s&from=now-15m&to=now&kiosk" $L.Main 0.75
+$graf = Open-Window "grafana" "$Graf/d/license-slo/?orgId=1&refresh=5s&from=now-10m&to=now&kiosk" $L.Main 0.75
 Close-Window $gh
 Place-Console $L.SideBottom
 $app2 = Open-Window "app-small" "$Web/" $L.SideTop 0.62

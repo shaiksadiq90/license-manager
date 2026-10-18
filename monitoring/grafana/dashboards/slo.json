@@ -5,7 +5,7 @@
   "version": 2,
   "refresh": "5s",
   "time": {
-    "from": "now-15m",
+    "from": "now-10m",
     "to": "now"
   },
   "timepicker": {
