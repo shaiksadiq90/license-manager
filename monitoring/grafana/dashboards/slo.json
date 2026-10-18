@@ -24,7 +24,7 @@
         "x": 0,
         "y": 0,
         "w": 6,
-        "h": 5
+        "h": 6
       },
       "targets": [
         {
@@ -75,7 +75,7 @@
         "x": 6,
         "y": 0,
         "w": 6,
-        "h": 5
+        "h": 6
       },
       "targets": [
         {
@@ -126,7 +126,7 @@
         "x": 12,
         "y": 0,
         "w": 6,
-        "h": 5
+        "h": 6
       },
       "targets": [
         {
@@ -193,7 +193,7 @@
         "x": 18,
         "y": 0,
         "w": 6,
-        "h": 5
+        "h": 6
       },
       "targets": [
         {
@@ -238,9 +238,9 @@
       "title": "Availability SLI (%)",
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 6,
         "w": 12,
-        "h": 10
+        "h": 19
       },
       "targets": [
         {
@@ -252,7 +252,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "min": 60,
+          "min": 50,
           "max": 100,
           "color": {
             "mode": "fixed",
@@ -295,9 +295,9 @@
       "title": "Requests per second by HTTP status",
       "gridPos": {
         "x": 12,
-        "y": 5,
+        "y": 6,
         "w": 12,
-        "h": 10
+        "h": 19
       },
       "targets": [
         {

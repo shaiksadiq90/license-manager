@@ -3,7 +3,8 @@ import { buildApp } from "./app";
 import { PgLicenseRepo } from "./db/repo";
 import { migrate } from "./db/migrate";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/licenses" });
+// Give up on a new connection after 1 s, so an unreachable database fails fast instead of hanging requests
+const pool = new Pool({ connectionString: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/licenses", connectionTimeoutMillis: 1000 });
 // An idle client losing its connection (e.g. database restart) must not crash the process
 pool.on("error", err => console.error("postgres pool error:", err.message));
 

@@ -48,4 +48,24 @@ describe("licenses API", () => {
     expect((await request(a).get("/readyz")).status).toBe(503);
     expect((await request(a).get("/healthz")).status).toBe(200);
   });
+  it("fails fast while the database is known to be down", async () => {
+    let calls = 0;
+    const down = new MemoryLicenseRepo();
+    down.list = async () => { calls++; throw new Error("connect ETIMEDOUT"); };
+    const a = buildApp(down, { breakerOpenMs: 60_000 });
+    expect((await request(a).get("/api/licenses")).status).toBe(503);
+    expect((await request(a).get("/api/licenses")).status).toBe(503);
+    expect(calls).toBe(1);   // the second request never waited on the database
+  });
+  it("closes the breaker once the database is back", async () => {
+    let fail = true;
+    const repo = new MemoryLicenseRepo(); const list = repo.list.bind(repo);
+    repo.list = async () => { if (fail) throw new Error("down"); return list(); };
+    const a = buildApp(repo, { breakerOpenMs: 20 });
+    expect((await request(a).get("/api/licenses")).status).toBe(503);
+    fail = false;
+    await new Promise(r => setTimeout(r, 30));
+    expect((await request(a).get("/api/licenses")).status).toBe(200);   // half-open probe succeeds
+    expect((await request(a).get("/api/licenses")).status).toBe(200);   // closed again
+  });
 });

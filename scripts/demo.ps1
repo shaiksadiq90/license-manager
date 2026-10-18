@@ -18,13 +18,23 @@ $Api = "http://127.0.0.1:3000"; $Web = "http://127.0.0.1:8080"; $Prom = "http://
 $Repo = "shaiksadiq90/license-manager"
 $runId = Get-Date -Format yyyyMMdd-HHmmss
 $log = Join-Path (Get-Location) "demo-log.txt"
-Set-Content $log "# unix_ms`tevent"
+$events = New-Object System.Collections.Generic.List[string]
+$events.Add("# unix_ms`tevent")
 
 # ---------------- window layout helpers ----------------
 Add-Type -TypeDefinition @"
 using System; using System.Text; using System.Runtime.InteropServices;
 public static class DemoWin {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  public struct FONTEX { public uint cbSize; public uint nFont; public short X; public short Y; public int Family; public int Weight;
+                         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Face; }
+  [DllImport("kernel32.dll")] static extern IntPtr GetStdHandle(int n);
+  [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool SetCurrentConsoleFontEx(IntPtr h, bool max, ref FONTEX f);
+  public static bool SetConsoleFont(string face, short height) {
+    FONTEX f = new FONTEX(); f.cbSize = (uint)Marshal.SizeOf(typeof(FONTEX)); f.Y = height; f.Family = 54; f.Weight = 400; f.Face = face;
+    return SetCurrentConsoleFontEx(GetStdHandle(-11), false, ref f);
+  }
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
   [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint f);
@@ -70,6 +80,7 @@ public static class DemoWin {
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $wa  = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
 $dpi = [System.Drawing.Graphics]::FromHwnd([IntPtr]::Zero).DpiX / 96.0
+$fit = $wa.Width / 1600.0   # zoom levels below are for a 1600 px wide screen; scale them to this one
 $split = [int]($wa.Width * 0.64)
 $sideTopH = [int]($wa.Height * 0.46)
 $L = @{ Main       = @($wa.X, $wa.Y, $split, $wa.Height)
@@ -78,6 +89,8 @@ $L = @{ Main       = @($wa.X, $wa.Y, $split, $wa.Height)
         SideBottom = @(($wa.X + $split), ($wa.Y + $sideTopH), ($wa.Width - $split), ($wa.Height - $sideTopH)) }
 
 $con = [DemoWin]::GetConsoleWindow()
+$fontPx = [int][Math]::Max(16, [Math]::Min(28, ($wa.Width - $split) / 64 / 0.55))
+[void][DemoWin]::SetConsoleFont("Consolas", $fontPx)
 function Place-Console($rect) {
   [DemoWin]::Place($con, $rect[0], $rect[1], $rect[2], $rect[3])
   Start-Sleep -Milliseconds 300
@@ -93,7 +106,7 @@ $profileRoot = Join-Path $env:TEMP "license-manager-demo\$runId"
 function Open-Window($name, $url, $rect, [double]$zoom = 1.0) {
   $inv = [Globalization.CultureInfo]::InvariantCulture
   $cargs = @("--user-data-dir=`"$(Join-Path $profileRoot $name)`"", "--no-first-run", "--no-default-browser-check", "--disable-sync",
-             "--hide-crash-restore-bubble", "--disable-search-engine-choice-screen", "--force-device-scale-factor=$(($zoom * $dpi).ToString($inv))",
+             "--hide-crash-restore-bubble", "--disable-search-engine-choice-screen", "--force-device-scale-factor=$(($zoom * $fit).ToString($inv))",
              "--window-position=$([int]($rect[0] / $dpi)),$([int]($rect[1] / $dpi))", "--window-size=$([int]($rect[2] / $dpi)),$([int]($rect[3] / $dpi))",
              "--app=$url")
   $p = Start-Process -FilePath $browser -ArgumentList $cargs -PassThru
@@ -109,7 +122,11 @@ function Close-Window($w) {
 }
 
 # ---------------- narration helpers ----------------
-function Mark($what) { Add-Content $log ("{0}`t{1}" -f [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(), $what) }
+# Timeline kept in memory and rewritten each time, so a sync tool or viewer holding the file open never breaks the demo
+function Mark($what) {
+  $events.Add(("{0}`t{1}" -f [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(), $what))
+  for ($i = 0; $i -lt 3; $i++) { try { [IO.File]::WriteAllLines($log, $events); return } catch { Start-Sleep -Milliseconds 200 } }
+}
 function Out-Wrapped([string]$text, [string]$color, [string]$prefix) {
   $width = [Math]::Max(30, $Host.UI.RawUI.WindowSize.Width - 1)
   $indent = " " * $prefix.Length; $lead = $prefix; $cur = ""
@@ -139,7 +156,10 @@ function Call($method, $path, $body) {
     return [pscustomobject]@{ Code = [int]$r.StatusCode; Body = [string]$r.Content }
   } catch [System.Net.WebException] {
     $resp = $_.Exception.Response
-    if ($resp) { $sr = New-Object IO.StreamReader($resp.GetResponseStream()); return [pscustomobject]@{ Code = [int]$resp.StatusCode; Body = $sr.ReadToEnd() } }
+    if ($resp) {
+      $body = if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { try { (New-Object IO.StreamReader($resp.GetResponseStream())).ReadToEnd() } catch { "" } }
+      return [pscustomobject]@{ Code = [int]$resp.StatusCode; Body = [string]$body }
+    }
     return [pscustomobject]@{ Code = 0; Body = $_.Exception.Message }
   } catch { return [pscustomobject]@{ Code = 0; Body = $_.Exception.Message } }
 }
@@ -198,7 +218,7 @@ $traffic = Start-Job -ScriptBlock {
 # ================= 1. the app =================
 $existing = 0; try { $existing = ((Call "GET" "/api/licenses" $null).Body | ConvertFrom-Json | Measure-Object).Count } catch { }
 if ($existing -eq 0) { foreach ($s in @(@("AutoCAD", 25), @("Revit", 15), @("Fusion", 8))) { [void](Call "POST" "/api/licenses" ("{""name"":""$($s[0])"",""seats"":$($s[1])}")) } }
-$app = Open-Window "app" "$Web/" $L.Main 1.25
+$app = Open-Window "app" "$Web/" $L.Main 1.0
 Place-Console $L.Side
 if ($Record) {
   $frames = Join-Path (Get-Location) "demo-frames\$runId"
@@ -231,7 +251,7 @@ try {
   $run = (Invoke-RestMethod -UseBasicParsing "https://api.github.com/repos/$Repo/actions/runs?branch=main&status=success&per_page=1" -Headers $h -TimeoutSec 10).workflow_runs[0]
   if ($run) { $runUrl = $run.html_url; $jobs = @((Invoke-RestMethod -UseBasicParsing $run.jobs_url -Headers $h -TimeoutSec 10).jobs) }
 } catch { }
-$gh = Open-Window "pipeline" $runUrl $L.Main 0.9
+$gh = Open-Window "pipeline" $runUrl $L.Main 0.8
 Close-Window $app
 Phase 2 "The pipeline"
 Say "GitHub Actions runs on every push to main. Nothing is deployed unless every gate passes." "Gray"
@@ -254,10 +274,10 @@ Mark "pipeline-shown"
 Hold 24
 
 # ================= 3. the SLO dashboard =================
-$graf = Open-Window "grafana" "$Graf/d/license-slo/?orgId=1&refresh=5s&from=now-15m&to=now&kiosk" $L.Main 0.85
+$graf = Open-Window "grafana" "$Graf/d/license-slo/?orgId=1&refresh=5s&from=now-15m&to=now&kiosk" $L.Main 0.75
 Close-Window $gh
 Place-Console $L.SideBottom
-$app2 = Open-Window "app-small" "$Web/" $L.SideTop 0.8
+$app2 = Open-Window "app-small" "$Web/" $L.SideTop 0.62
 Phase 3 "SLO dashboard"
 Say "Targets from the user's side: 99.9% of requests succeed, p95 latency under 500 ms." "Gray"
 Say "Page: ErrorBudgetFastBurn, error ratio above 14.4 x 0.1% for 2 min (budget gone in ~2 days)." "Gray"
