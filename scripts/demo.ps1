@@ -332,7 +332,7 @@ Mark "drill-resolved"
 Say ""
 if ($tResolved) { Step ("RECOVERED: alert resolved, availability back above 99.9%, {0:m\:ss} after restart" -f ($tResolved - $tStart)) "Green" }
 Say ""
-Say "Lesson: planning this drill exposed that the API crashed when the database went away. It now returns 503s and stays up, and a unit test guards that path." "Gray"
+Say "Lessons: drills exposed a crash when the database went away, then slow 503s. Now a circuit breaker answers 503 instantly while a background health check waits for the database; unit tests guard both." "Gray"
 Mark "demo-end"
 Hold 15
 

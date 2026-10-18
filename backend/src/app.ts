@@ -2,11 +2,11 @@ import express, { Request, Response, NextFunction } from "express";
 import client from "prom-client";
 import { LicenseRepo } from "./db/repo";
 import { licenseRouter } from "./routes/licenses";
-import { circuitBreaker } from "./breaker";
+import { circuitBreaker, isConnectionError } from "./breaker";
 
-export function buildApp(repo: LicenseRepo, opts: { breakerOpenMs?: number } = {}) {
+export function buildApp(repo: LicenseRepo, opts: { breakerRetryMs?: number } = {}) {
   const app = express();
-  const breaker = circuitBreaker(opts.breakerOpenMs ?? 2000);
+  const breaker = circuitBreaker(() => repo.ping(), opts.breakerRetryMs ?? 2000);
   const registry = new client.Registry();
   client.collectDefaultMetrics({ register: registry });
   const httpDuration = new client.Histogram({
@@ -30,7 +30,7 @@ export function buildApp(repo: LicenseRepo, opts: { breakerOpenMs?: number } = {
   // Dependency failures (e.g. database down) become a 503 instead of a crash, and open the circuit breaker
   app.use((err: Error, _q: Request, s: Response, _n: NextFunction) => {
     console.error("request failed:", err.message);
-    breaker.trip();
+    if (isConnectionError(err)) breaker.trip();
     s.status(503).json({ error: "service unavailable" });
   });
   return app;

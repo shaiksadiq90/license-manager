@@ -52,20 +52,30 @@ describe("licenses API", () => {
     let calls = 0;
     const down = new MemoryLicenseRepo();
     down.list = async () => { calls++; throw new Error("connect ETIMEDOUT"); };
-    const a = buildApp(down, { breakerOpenMs: 60_000 });
+    down.ping = async () => false;
+    const a = buildApp(down, { breakerRetryMs: 60_000 });
     expect((await request(a).get("/api/licenses")).status).toBe(503);
     expect((await request(a).get("/api/licenses")).status).toBe(503);
     expect(calls).toBe(1);   // the second request never waited on the database
   });
+  it("does not open the breaker for errors unrelated to the database connection", async () => {
+    let calls = 0;
+    const repo = new MemoryLicenseRepo();
+    repo.list = async () => { calls++; throw new Error("unexpected bug"); };
+    const a = buildApp(repo, { breakerRetryMs: 60_000 });
+    await request(a).get("/api/licenses"); await request(a).get("/api/licenses");
+    expect(calls).toBe(2);
+  });
   it("closes the breaker once the database is back", async () => {
     let fail = true;
     const repo = new MemoryLicenseRepo(); const list = repo.list.bind(repo);
-    repo.list = async () => { if (fail) throw new Error("down"); return list(); };
-    const a = buildApp(repo, { breakerOpenMs: 20 });
-    expect((await request(a).get("/api/licenses")).status).toBe(503);
+    repo.list = async () => { if (fail) throw new Error("connect ECONNREFUSED 10.0.0.5:5432"); return list(); };
+    repo.ping = async () => !fail;
+    const a = buildApp(repo, { breakerRetryMs: 20 });
+    expect((await request(a).get("/api/licenses")).status).toBe(503);   // trips the breaker
     fail = false;
-    await new Promise(r => setTimeout(r, 30));
-    expect((await request(a).get("/api/licenses")).status).toBe(200);   // half-open probe succeeds
-    expect((await request(a).get("/api/licenses")).status).toBe(200);   // closed again
+    expect((await request(a).get("/api/licenses")).status).toBe(503);   // still open: fast 503, no database call
+    await new Promise(r => setTimeout(r, 60));                          // background health check sees the database again
+    expect((await request(a).get("/api/licenses")).status).toBe(200);
   });
 });
