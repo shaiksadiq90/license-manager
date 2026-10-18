@@ -22,7 +22,9 @@ export function buildApp(repo: LicenseRepo, opts: { breakerRetryMs?: number } = 
   });
 
   app.get("/healthz", (_q, s) => s.json({ status: "ok" }));                       // liveness
-  app.get("/readyz", async (_q, s) => (await repo.ping()) ? s.json({ status: "ready" }) : s.status(503).json({ status: "db unavailable" })); // readiness
+  app.get("/readyz", async (_q, s) => {                                           // readiness
+    if (await repo.ping()) { breaker.reset(); s.json({ status: "ready" }); } else s.status(503).json({ status: "db unavailable" });
+  });
   app.get("/metrics", async (_q, s) => { s.set("Content-Type", registry.contentType); s.end(await registry.metrics()); });
   app.use("/api", breaker.guard);
   app.use("/api/licenses", licenseRouter(repo));

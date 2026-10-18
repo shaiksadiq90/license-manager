@@ -315,6 +315,7 @@ docker compose start db 2>&1 | ForEach-Object { Say ("  " + $_) "DarkGray" }
 $tStart = Get-Date
 $ok = $false; for ($i = 0; $i -lt 60 -and -not $ok; $i++) { Start-Sleep 1; $ok = (Call "GET" "/readyz" $null).Code -eq 200 }
 Say ("  " + (Probe "/readyz") + ("  after {0:N0} s" -f ((Get-Date) - $tStart).TotalSeconds)) "Green"
+for ($i = 0; $i -lt 15 -and (Call "GET" "/api/licenses" $null).Code -ne 200; $i++) { Start-Sleep 1 }
 Mark "drill-ready"
 Say "Verify from the user's side: a real write, then the SLO." "DarkGray"
 $smoke = Show-Call "POST" "/api/licenses" '{"name":"Smoke test","seats":1}' $null

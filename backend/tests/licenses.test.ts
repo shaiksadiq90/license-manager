@@ -66,6 +66,17 @@ describe("licenses API", () => {
     await request(a).get("/api/licenses"); await request(a).get("/api/licenses");
     expect(calls).toBe(2);
   });
+  it("a successful readiness check closes the breaker immediately", async () => {
+    let fail = true;
+    const repo = new MemoryLicenseRepo(); const list = repo.list.bind(repo);
+    repo.list = async () => { if (fail) throw new Error("connect ECONNREFUSED 10.0.0.5:5432"); return list(); };
+    repo.ping = async () => !fail;
+    const a = buildApp(repo, { breakerRetryMs: 60_000 });
+    expect((await request(a).get("/api/licenses")).status).toBe(503);
+    fail = false;
+    expect((await request(a).get("/readyz")).status).toBe(200);
+    expect((await request(a).get("/api/licenses")).status).toBe(200);
+  });
   it("closes the breaker once the database is back", async () => {
     let fail = true;
     const repo = new MemoryLicenseRepo(); const list = repo.list.bind(repo);

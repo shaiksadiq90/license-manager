@@ -21,6 +21,7 @@ export function circuitBreaker(ping: () => Promise<boolean>, retryMs = 2000) {
       next();
     },
     trip() { if (!open) { open = true; setTimeout(probe, retryMs).unref(); } },
+    reset() { open = false; },   // any successful health check (e.g. the readiness probe) closes it at once
     isOpen: () => open,
   };
 }
