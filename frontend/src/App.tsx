@@ -6,9 +6,17 @@ export default function App() {
   const [rows, setRows] = useState<License[]>([]);
   const [name, setName] = useState(""); const [seats, setSeats] = useState(1);
   const [error, setError] = useState("");
+  const [outage, setOutage] = useState("");
 
-  const load = async () => setRows(await (await fetch("/api/licenses")).json());
-  useEffect(() => { load(); }, []);
+  // Poll every 3 s so changes made by other admins (or the API) show up; keep the last good data during an outage
+  const load = async () => {
+    try {
+      const r = await fetch("/api/licenses");
+      if (!r.ok) { setOutage(`Service unavailable (HTTP ${r.status}). Showing last known data, retrying…`); return; }
+      setRows(await r.json()); setOutage("");
+    } catch { setOutage("Cannot reach the API. Retrying…"); }
+  };
+  useEffect(() => { load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, []);
 
   const add = async () => {
     const r = await fetch("/api/licenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, seats }) });
@@ -29,6 +37,7 @@ export default function App() {
         <input type="number" min={1} value={seats} onChange={e => setSeats(+e.target.value)} style={{ width: 80 }} />
         <button onClick={add}>Add license</button>
       </div>
+      {outage && <p style={{ background: "#fdecea", color: "#b42318", padding: "8px 12px", borderRadius: 6 }}>{outage}</p>}
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse" }}>
         <thead><tr><th align="left">Name</th><th>Seats</th><th>Status</th><th></th></tr></thead>

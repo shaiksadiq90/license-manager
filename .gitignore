@@ -4,3 +4,5 @@ dist/
 *.tfstate*
 *.tfvars
 .env
+demo-log.txt
+demo-frames/

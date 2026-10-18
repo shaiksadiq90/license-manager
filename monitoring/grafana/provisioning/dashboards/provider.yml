@@ -1,2 +1,2 @@
 apiVersion: 1
-providers: [{ name: default, folder: SLO, type: file, options: { path: /var/lib/grafana/dashboards } }]
+providers: [{ name: default, folder: SLO, type: file, updateIntervalSeconds: 10, options: { path: /var/lib/grafana/dashboards } }]

@@ -20,9 +20,13 @@ docker compose up --build
 | http://127.0.0.1:3000/api/licenses | API |
 | http://127.0.0.1:3000/metrics | Prometheus metrics |
 | http://127.0.0.1:9090 | Prometheus |
-| http://127.0.0.1:3001 | Grafana (admin/admin), SLO folder |
+| http://127.0.0.1:3001 | Grafana (read-only without login; admin/admin to edit), SLO folder |
 
 Tests: `cd backend; npm test`
+
+Break-and-recover drill: `.\scripts\drill.ps1` (stops the database, waits for the burn-rate alert, restarts it).
+Hands-free demo of the app, pipeline, dashboard and drill, laid out for screen recording:
+`conhost.exe powershell -ExecutionPolicy Bypass -File .\scripts\demo.ps1 -Record` (frames go to `demo-frames\`).
 
 ## 3. Kubernetes locally (no AWS cost)
 ```powershell
