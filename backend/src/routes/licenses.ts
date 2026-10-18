@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { LicenseRepo } from "../db/repo";
 
 const STATUSES = ["active", "suspended", "expired"];
@@ -10,18 +10,22 @@ function validate(body: any, partial = false): string | null {
   return null;
 }
 
+// Express 4 does not catch rejected promises: forward them to the error handler instead of crashing
+type Handler = (q: Request, s: Response) => Promise<unknown>;
+const wrap = (fn: Handler) => (q: Request, s: Response, next: NextFunction) => { fn(q, s).catch(next); };
+
 export function licenseRouter(repo: LicenseRepo) {
   const r = Router();
-  r.get("/", async (_q, s) => s.json(await repo.list()));
-  r.get("/:id", async (q, s) => { const l = await repo.get(+q.params.id); l ? s.json(l) : s.status(404).json({ error: "not found" }); });
-  r.post("/", async (q, s) => {
+  r.get("/", wrap(async (_q, s) => s.json(await repo.list())));
+  r.get("/:id", wrap(async (q, s) => { const l = await repo.get(+q.params.id); l ? s.json(l) : s.status(404).json({ error: "not found" }); }));
+  r.post("/", wrap(async (q, s) => {
     const err = validate(q.body); if (err) return s.status(400).json({ error: err });
     s.status(201).json(await repo.create({ name: q.body.name, seats: q.body.seats, status: q.body.status ?? "active" }));
-  });
-  r.put("/:id", async (q, s) => {
+  }));
+  r.put("/:id", wrap(async (q, s) => {
     const err = validate(q.body, true); if (err) return s.status(400).json({ error: err });
     const l = await repo.update(+q.params.id, q.body); l ? s.json(l) : s.status(404).json({ error: "not found" });
-  });
-  r.delete("/:id", async (q, s) => (await repo.remove(+q.params.id)) ? s.status(204).end() : s.status(404).json({ error: "not found" }));
+  }));
+  r.delete("/:id", wrap(async (q, s) => (await repo.remove(+q.params.id)) ? s.status(204).end() : s.status(404).json({ error: "not found" })));
   return r;
 }

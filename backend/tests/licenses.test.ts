@@ -39,4 +39,13 @@ describe("licenses API", () => {
     const r = await request(app()).get("/metrics");
     expect(r.text).toContain("process_cpu");
   });
+  it("returns 503 instead of crashing when the database is down", async () => {
+    const down = new MemoryLicenseRepo();
+    down.list = async () => { throw new Error("connect ECONNREFUSED"); };
+    down.ping = async () => false;
+    const a = buildApp(down);
+    expect((await request(a).get("/api/licenses")).status).toBe(503);
+    expect((await request(a).get("/readyz")).status).toBe(503);
+    expect((await request(a).get("/healthz")).status).toBe(200);
+  });
 });

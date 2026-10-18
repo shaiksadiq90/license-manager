@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import client from "prom-client";
 import { LicenseRepo } from "./db/repo";
 import { licenseRouter } from "./routes/licenses";
@@ -23,5 +23,11 @@ export function buildApp(repo: LicenseRepo) {
   app.get("/readyz", async (_q, s) => (await repo.ping()) ? s.json({ status: "ready" }) : s.status(503).json({ status: "db unavailable" })); // readiness
   app.get("/metrics", async (_q, s) => { s.set("Content-Type", registry.contentType); s.end(await registry.metrics()); });
   app.use("/api/licenses", licenseRouter(repo));
+
+  // Dependency failures (e.g. database down) become a fast 503 instead of a hung request or a crash
+  app.use((err: Error, _q: Request, s: Response, _n: NextFunction) => {
+    console.error("request failed:", err.message);
+    s.status(503).json({ error: "service unavailable" });
+  });
   return app;
 }

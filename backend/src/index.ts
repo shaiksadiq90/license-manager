@@ -4,6 +4,9 @@ import { PgLicenseRepo } from "./db/repo";
 import { migrate } from "./db/migrate";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/licenses" });
+// An idle client losing its connection (e.g. database restart) must not crash the process
+pool.on("error", err => console.error("postgres pool error:", err.message));
+
 const port = Number(process.env.PORT ?? 3000);
 
 migrate(pool).then(() => {
