@@ -1,9 +1,14 @@
 variable "repos" { type = list(string) }
+variable "force_delete" {
+  type    = bool
+  default = false # dev sets true so terraform destroy also removes pushed images
+}
 
 resource "aws_ecr_repository" "r" {
   for_each             = toset(var.repos)
   name                 = each.value
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = var.force_delete
   image_scanning_configuration { scan_on_push = true }
 }
 

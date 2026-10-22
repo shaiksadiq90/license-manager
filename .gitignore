@@ -6,3 +6,4 @@ dist/
 .env
 demo-log.txt
 demo-frames/
+infra/terraform/envs/*/backend.hcl

@@ -1,0 +1,12 @@
+# Desired state of the dev environment on EKS. Argo CD keeps the cluster matching this file.
+# CI updates the two image tags after a clean, scanned build; nobody runs helm or kubectl by hand.
+image:
+  api: { repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/license-manager-api, tag: "latest" }
+  web: { repository: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/license-manager-web, tag: "latest" }
+  pullPolicy: IfNotPresent      # tags are immutable commit SHAs
+replicas: 2
+databaseSecret: license-db      # created by scripts/aws-up.ps1 from the RDS secret in Secrets Manager
+web:
+  serviceType: LoadBalancer
+postgres:
+  enabled: false                # real database is RDS

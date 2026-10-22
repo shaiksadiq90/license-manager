@@ -6,6 +6,14 @@ variable "multi_az" {
   type    = bool
   default = false
 }
+variable "deletion_protection" {
+  type    = bool
+  default = true # prod default; dev turns it off so the stack can be torn down daily
+}
+variable "skip_final_snapshot" {
+  type    = bool
+  default = false
+}
 
 resource "aws_security_group" "db" {
   name   = "${var.name}-db"
@@ -21,7 +29,7 @@ resource "aws_security_group" "db" {
 resource "aws_db_instance" "this" {
   identifier                  = var.name
   engine                      = "postgres"
-  engine_version              = "16.3"
+  engine_version              = "16"
   instance_class              = "db.t3.micro"
   allocated_storage           = 20
   db_name                     = "licenses"
@@ -32,9 +40,9 @@ resource "aws_db_instance" "this" {
   multi_az                    = var.multi_az # standby in second AZ for failover
   backup_retention_period     = 7            # point-in-time restore -> RPO ~5 min
   storage_encrypted           = true
-  deletion_protection         = true
-  skip_final_snapshot         = false
-  final_snapshot_identifier   = "${var.name}-final"
+  deletion_protection         = var.deletion_protection
+  skip_final_snapshot         = var.skip_final_snapshot
+  final_snapshot_identifier   = var.skip_final_snapshot ? null : "${var.name}-final"
 }
 
 output "endpoint" { value = aws_db_instance.this.address }
