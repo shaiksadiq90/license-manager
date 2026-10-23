@@ -1,4 +1,4 @@
-# License Manager - DevOps Showcase
+# License Manager
 
 Simple license CRUD app (Node.js + Express + TypeScript, React, PostgreSQL). The point is the platform around it: Terraform on AWS (VPC, EKS, RDS, ECR), Helm, GitHub Actions with Trivy scanning, Prometheus + Grafana Service Level Objective dashboards, and disaster recovery runbooks.
 
