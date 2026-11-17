@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info: { title: License Manager API, version: "1.0" }
+servers: [{ url: http://localhost:3000 }]
+paths:
+  /healthz: { get: { responses: { "200": { description: ok } } } }
+  /readyz: { get: { responses: { "200": { description: ok } } } }
+  /api/licenses:
+    get: { responses: { "200": { description: list } } }
+    post:
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/License" } } }
+      responses: { "201": { description: created }, "400": { description: invalid } }
+  /api/licenses/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+    get: { responses: { "200": { description: one }, "404": { description: missing } } }
+    put:
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/License" } } }
+      responses: { "200": { description: updated }, "404": { description: missing } }
+    delete: { responses: { "204": { description: deleted }, "404": { description: missing } } }
+components:
+  schemas:
+    License:
+      type: object
+      required: [name, seats]
+      properties:
+        name: { type: string, example: "Maya Enterprise" }
+        seats: { type: integer, minimum: 1, example: 25 }
+        status: { type: string, enum: [active, suspended, expired] }
