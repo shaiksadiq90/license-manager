@@ -36,3 +36,30 @@ corrections** to earlier entries or docs. Rules:
 ### Corrections
 
 - None yet.
+
+---
+
+## 2026-11-17 — Fix first CI failures on PR #1
+
+| | |
+|---|---|
+| **Why** | Both workflows failed on commit `03570c1` |
+| **Branch / PR** | `security-and-load-testing` / [#1](https://github.com/shaiksadiq90/license-manager/pull/1) |
+
+### What changed
+
+| File | Change |
+|---|---|
+| `.github/workflows/security.yml` | quoted step names that contain `:`; rewrote the upload-artifact `with:` block. The file was invalid YAML, so no jobs ran |
+| `backend/package-lock.json` | express 4.22.3 now resolves body-parser 1.20.9 (was 1.20.8) |
+
+### Evidence
+
+- [security.yml run 44176106265](https://github.com/shaiksadiq90/license-manager/actions/runs/44176106265): failed at parse. Local check: `mapping values are not allowed here`, line 50
+- [ci-cd run 44176132695](https://github.com/shaiksadiq90/license-manager/actions/runs/44176132695), job `build-scan (api)`: Trivy reported CVE-2026-111181 (HIGH, body-parser 1.20.8, fixed in 1.20.9)
+- Last `main` ci-cd run (2026-10-23) passed, so the CVE was published after that. The Trivy gate caught a new vulnerability as designed.
+- Local `npm test`: 13/13 passed after the bump
+
+### Corrections
+
+- First entry said the pipeline was ready to run. It was not: `security.yml` had a YAML error.

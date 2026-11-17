@@ -12,7 +12,7 @@ jobs:
     container: semgrep/semgrep
     steps:
       - uses: actions/checkout@v5
-      - name: Semgrep (fail on ERROR-severity findings)
+      - name: "Semgrep (fail on ERROR-severity findings)"
         run: |
           semgrep scan --config p/typescript --config p/nodejs --config p/react \
             --config p/dockerfile --config p/terraform --config p/kubernetes \
@@ -47,15 +47,17 @@ jobs:
           rules_file_name: .zap/rules.tsv
           allow_issue_writing: false
           artifact_name: zap-web-report
-      - name: Locust load test (SLO gate: p95 < 500 ms, errors < 1%)
+      - name: "Locust load test (SLO gate: p95 < 500 ms, errors < 1%)"
         run: |
           pip install -q locust==2.32.4
           locust -f loadtest/locustfile.py --host http://localhost:3000 \
             --headless -u 50 -r 10 -t 2m --csv loadtest/results --html loadtest/report.html
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: locust-report, path: |
+        with:
+          name: locust-report
+          path: |
             loadtest/results*
-            loadtest/report.html }
+            loadtest/report.html
       - if: always()
         run: docker compose logs api | tail -100
