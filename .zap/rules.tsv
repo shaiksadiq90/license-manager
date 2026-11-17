@@ -1,0 +1,4 @@
+# ZAP rule overrides: <rule id>	<IGNORE|WARN|FAIL>	<reason>
+# The build FAILS on any warning (fail_action: true). Hard control: fix it, don't skip it.
+# Every IGNORE needs a reason here and an entry in docs/log/CHANGELOG-EVIDENCE.md.
+10202	IGNORE	Absence of anti-CSRF tokens: API is stateless JSON, no cookies or sessions
