@@ -101,3 +101,18 @@ corrections** to earlier entries or docs. Rules:
 ### Corrections
 
 - None.
+
+---
+
+## 2026-11-17 — Branch history rewritten
+
+The 4 commits on `security-and-load-testing` were rewritten to change the commit metadata only. The code is unchanged. The short SHAs in earlier entries now map like this:
+
+| Old | New |
+|---|---|
+| `03570c1` | `c48012a` |
+| `fee07d0` | `87c27b3` |
+| `8311bda` | `3558811` |
+| `4ff23c4` | `f99772d` |
+
+The linked CI runs still point at the old SHAs.
