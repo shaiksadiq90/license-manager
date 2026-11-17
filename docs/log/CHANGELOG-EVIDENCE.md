@@ -87,3 +87,17 @@ corrections** to earlier entries or docs. Rules:
 ### Corrections
 
 - None.
+
+---
+
+## 2026-11-17 — Third run: full pipeline green
+
+### Evidence — [run 44177440833](https://github.com/shaiksadiq90/license-manager/actions/runs/44177440833) on `8311bda`
+
+- ci-cd: passed. security-and-load: passed (Semgrep, ZAP API, ZAP web, Locust)
+- Locust, 50 users × 2 min on a GitHub runner: 5,730 requests, **p95 = 4 ms, 0% errors**, max 76 ms, ~48 req/s
+- This is a single Docker Compose host on a CI runner, not EKS. It does **not** prove the 99.9% / p95 < 500 ms SLO in AWS.
+
+### Corrections
+
+- None.
