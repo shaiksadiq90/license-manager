@@ -14,6 +14,12 @@ export function buildApp(repo: LicenseRepo, opts: { breakerRetryMs?: number } = 
     labelNames: ["method", "route", "status"], buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5], registers: [registry],
   });
 
+  app.disable("x-powered-by");                                                     // don't advertise Express
+  app.use((_q, s, next) => {                                                       // security headers on every response
+    s.set({ "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Cross-Origin-Resource-Policy": "same-origin",
+      "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'", "Cache-Control": "no-store" });
+    next();
+  });
   app.use(express.json());
   app.use((req, res, next) => {
     const end = httpDuration.startTimer();
@@ -28,12 +34,15 @@ export function buildApp(repo: LicenseRepo, opts: { breakerRetryMs?: number } = 
   app.get("/metrics", async (_q, s) => { s.set("Content-Type", registry.contentType); s.end(await registry.metrics()); });
   app.use("/api", breaker.guard);
   app.use("/api/licenses", licenseRouter(repo));
+  app.use((_q, s) => { s.status(404).json({ error: "not found" }); });           // JSON 404, not Express's HTML page
 
-  // Dependency failures (e.g. database down) become a 503 instead of a crash, and open the circuit breaker
-  app.use((err: Error, _q: Request, s: Response, _n: NextFunction) => {
+  // Client errors (e.g. malformed JSON) keep their 4xx. Only database connection failures are a 503 and open
+  // the breaker; any other error is a 500 so real bugs aren't hidden behind "service unavailable"
+  app.use((err: Error & { status?: number }, _q: Request, s: Response, _n: NextFunction) => {
+    if (err.status && err.status >= 400 && err.status < 500) return s.status(err.status).json({ error: "bad request" });
     console.error("request failed:", err.message);
-    if (isConnectionError(err)) breaker.trip();
-    s.status(503).json({ error: "service unavailable" });
+    if (isConnectionError(err)) { breaker.trip(); return s.status(503).json({ error: "service unavailable" }); }
+    s.status(500).json({ error: "internal error" });
   });
   return app;
 }

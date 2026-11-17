@@ -39,6 +39,7 @@ jobs:
           rules_file_name: .zap/rules.tsv
           cmd_options: "-O http://localhost:3000"
           allow_issue_writing: false
+          fail_action: true
           artifact_name: zap-api-report
       - name: OWASP ZAP baseline scan of the web UI
         uses: zaproxy/action-baseline@v0.14.0
@@ -46,6 +47,7 @@ jobs:
           target: http://localhost:8080
           rules_file_name: .zap/rules.tsv
           allow_issue_writing: false
+          fail_action: true
           artifact_name: zap-web-report
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }

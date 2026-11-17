@@ -89,4 +89,23 @@ describe("licenses API", () => {
     await new Promise(r => setTimeout(r, 60));                          // background health check sees the database again
     expect((await request(a).get("/api/licenses")).status).toBe(200);
   });
+  it("404s on ids outside the integer range instead of erroring", async () => {
+    const a = app();
+    expect((await request(a).get("/api/licenses/1870015440967816970")).status).toBe(404);
+    expect((await request(a).get("/api/licenses/abc")).status).toBe(404);
+  });
+  it("returns 400 for malformed JSON, not 503", async () => {
+    const r = await request(app()).post("/api/licenses").set("Content-Type", "application/json").send("{bad");
+    expect(r.status).toBe(400);
+  });
+  it("sets security headers and hides X-Powered-By", async () => {
+    const r = await request(app()).get("/healthz");
+    expect(r.headers["x-powered-by"]).toBeUndefined();
+    expect(r.headers["x-content-type-options"]).toBe("nosniff");
+    expect(r.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  });
+  it("returns JSON 404 for unknown paths", async () => {
+    const r = await request(app()).get("/nope");
+    expect(r.status).toBe(404); expect(r.type).toBe("application/json");
+  });
 });
