@@ -47,6 +47,8 @@ jobs:
           rules_file_name: .zap/rules.tsv
           allow_issue_writing: false
           artifact_name: zap-web-report
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
       - name: "Locust load test (SLO gate: p95 < 500 ms, errors < 1%)"
         run: |
           pip install -q locust==2.32.4

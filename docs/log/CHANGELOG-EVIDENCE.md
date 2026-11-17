@@ -63,3 +63,27 @@ corrections** to earlier entries or docs. Rules:
 ### Corrections
 
 - First entry said the pipeline was ready to run. It was not: `security.yml` had a YAML error.
+
+---
+
+## 2026-11-17 — Second run: SAST and DAST ran, Locust failed to start
+
+### What changed
+
+| File | Change |
+|---|---|
+| `.github/workflows/security.yml` | added `actions/setup-python` before Locust; the runner's system Python was missing `charset_normalizer` |
+
+### Evidence — [run 44176675178](https://github.com/shaiksadiq90/license-manager/actions/runs/44176675178) on `fee07d0`
+
+- ci-cd: **passed** (Trivy clean after the body-parser bump)
+- Semgrep: **passed**, no ERROR-severity findings
+- ZAP API scan: 0 FAIL, 5 WARN, 117 PASS
+  - 503 on `/api/licenses` and on `/api/licenses/1870015440967816970` (a huge id). Cause **not yet confirmed**: probably the circuit breaker opening, or the id overflowing Postgres `integer`
+  - `X-Powered-By` leaks Express; `X-Content-Type-Options` and `Cross-Origin-Resource-Policy` missing
+- ZAP web scan: 0 FAIL, 4 WARN: no anti-clickjacking header, no `X-Content-Type-Options`, nginx version in the `Server` header, no CSP
+- Locust: did not run (`ModuleNotFoundError: charset_normalizer`)
+
+### Corrections
+
+- None.
